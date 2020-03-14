@@ -39,7 +39,17 @@ def gini_gain_calc(dataframe, feature, current_split):
         subset_weight = subset_count_row / total_row
         gini_weighted_gain_total += subset_weight * gini_subset_total
 
-    return gini_weighted_gain_total
+    # optimal gini gain
+    # final formula optimal_gain - gain_obtained
+    optimal_gini_gain = 0
+    for label in labels_list:
+        count_label = dataframe[dataframe[label_column] == label].count()
+        current_probability = count_label/total_row
+        optimal_gini_gain += count_label/total_row * (1 - count_label/total_row )
+
+    gini_gain = optimal_gini_gain - gini_weighted_gain_total
+
+    return gini_gain
 
 def gini_impurity(dataframe):
     features_list = dataframe.columns[:len(dataframe.columns) - 1]
