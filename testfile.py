@@ -115,6 +115,20 @@ def gini_impurity(dataframe):
 
         # TODO
         # take the maximum split and use it as the first split and iterate again for the next step
+        # save the split as a condition
+    max_gain = 0
+    max_split = ''
+    feature = ''
+    for key, value in gini_dict.items():
+        loop_dict = value
+        print(value)
+        if loop_dict['gini_gain'] > max_gain:
+            max_gain = loop_dict['gini_gain']
+            max_split = loop_dict['split_value']
+            feature = key
+    if type(feature) != 'string':
+        print(max_gain, max_split, feature)
+        dict = {'split_value': max_split, 'feature': feature}
 
 
 data_path = 'Data'
