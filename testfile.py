@@ -42,13 +42,15 @@ def gini_gain_calc(dataframe, feature, current_split):
         subset_count_row = subset[feature].count()
         print("subset count row {} feature {} ".format(subset_count_row, feature))
         # for each label sum -> p(label)*(1-p(label))
+        # TODO
+        # check in this way it goes two times -> maybe it is just because it is the same split a/b(1-a/b) = (1-a)/b(1-(1-a)/b)
         for label in labels_list:
             # estimate the impurity
             # remove the first line in the count
             count_label = subset[subset[label_column] == label][feature].count()
             label_probability = count_label / subset_count_row
-            print("count_label {} label {} label prob {}".format(count_label, label, label_probability))
             gini_subset_total += label_probability * (1 - label_probability)
+            print("count_label {} label {} label prob {} GINI SUBSET TOTAL = {}".format(count_label, label, label_probability, gini_subset_total))
 
         # weighted sum of both splits
         subset_weight = subset_count_row / total_row
@@ -56,16 +58,22 @@ def gini_gain_calc(dataframe, feature, current_split):
 
     # optimal gini gain
     # final formula optimal_gain - gain_obtained
-    optimal_gini_gain = 0
+    maximum_correctness = 0
     for label in labels_list:
         # remove the first line in the count
-        count_label = dataframe[dataframe[label_column] == label].count() - 1
+        count_label = dataframe[dataframe[label_column] == label][feature].count()
         current_probability = count_label / total_row
-        optimal_gini_gain += current_probability * (1 - current_probability)
+        maximum_correctness += current_probability * current_probability
+        print("*** maximum_impurity *** {} , {} / {}".format(maximum_correctness, count_label, total_row))
+    # the max impurity is 1 - probability to correctly assign the label (p(x)^2)
+    maximum_impurity = 1 - maximum_correctness
 
-    gini_gain = optimal_gini_gain - gini_weighted_gain_total
+    print("maximum_impurity = {} gini_weighted_gain_total = {} ".format(maximum_impurity, gini_weighted_gain_total))
+    # https://stats.stackexchange.com/questions/175087/basic-gini-impurity-derivation/339514#339514
+    # the gain = max impurity - impurity we got
+    gini_gain = maximum_impurity - gini_weighted_gain_total
     print("gini gain is {}".format(gini_gain))
-    return gini_gain[feature]
+    return gini_gain
 
 
 def gini_impurity(dataframe):
