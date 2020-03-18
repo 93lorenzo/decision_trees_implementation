@@ -1,6 +1,6 @@
 import os
-import csv
 import pandas as pd
+import pprint
 
 """
 Gini Impurity is a measurement of the likelihood of an incorrect classification of a new instance of a random variable, 
@@ -17,6 +17,7 @@ MORE_EQUAL = '>='
 LESS = '<'
 FEATURE_KEY = 'feature'
 PRUNE_LEVEL = 10
+output_flow_dict = {}
 
 
 def gini_gain_calc(dataframe, feature, current_split):
@@ -83,18 +84,6 @@ def gini_gain_calc(dataframe, feature, current_split):
     full_data_left = full_data_frame_deep_copy[full_data_frame_deep_copy[feature] < current_split]
     full_data_right = full_data_frame_deep_copy[full_data_frame_deep_copy[feature] >= current_split]
     return gini_gain, {LESS: full_data_left, MORE_EQUAL: full_data_right}
-
-
-def classification(dataframe, current_level):
-    columns_list = list(dataframe.columns)
-    label_column = columns_list[len(columns_list) - 1]
-    # obtain all the possible outcomes (labels)
-    labels_list = set(dataframe[label_column])
-
-    ##################
-    # stop condition #
-    if current_level > PRUNE_LEVEL or len(labels_list) == 1:
-        return labels_list[0]
 
 
 def training(dataframe, current_level):
@@ -168,15 +157,29 @@ def training(dataframe, current_level):
                             MORE_EQUAL: training(max_sons_dict[MORE_EQUAL], current_level - 1)}
         # dict = {'split_value': max_split, 'feature': feature}
 
-    print("output_dict = {}".format(output_flow_dict))
+    # print("output_dict = {}".format(output_flow_dict))
+    print("Final dict is : ")
+    pprint.pprint(output_flow_dict)
     return output_flow_dict
+
+
+def classification(classification_dict,output_flow_dict):
+    # if it contains only the output
+    if FEATURE_KEY not in output_flow_dict:
+        return output_flow_dict
+    # check for each feature the split and which part of the dict/tree explore
+    feature_to_test = output_flow_dict[FEATURE_KEY]
+    if classification_dict[feature_to_test] >= output_flow_dict[SPLIT_VALUE_KEY]:
+        return classification(classification_dict, output_flow_dict[MORE_EQUAL])
+    else:
+        return classification(classification_dict, output_flow_dict[LESS])
 
 
 data_path = 'Data'
 file_name = 'iris_data.csv'
 
 dataframe = pd.read_csv(os.path.join(data_path, file_name))
-training_set = dataframe#.head(60)
+training_set = dataframe  # .head(60)
 print(training_set)
 
 current_level = 0
