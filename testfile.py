@@ -18,7 +18,7 @@ LESS = '<'
 FEATURE_KEY = 'feature'
 PRUNE_LEVEL = 10
 output_flow_dict = {}
-
+features_list = []
 
 def gini_gain_calc(dataframe, feature, current_split):
     columns_list = list(dataframe.columns)
@@ -163,7 +163,16 @@ def training(dataframe, current_level):
     return output_flow_dict
 
 
-def classification(classification_dict,output_flow_dict):
+def classification(classification_dict, output_flow_dict):
+    # is it the output well written ?
+
+    if len(classification_dict.keys()) != len(features_list):
+        raise Exception('DecisionTree Classification Exception', 'Wrong variables')
+    else:
+        for key in classification_dict.keys():
+            if key not in features_list:
+                raise Exception('DecisionTree Classification Exception', 'Wrong variables')
+
     # if it contains only the output
     if FEATURE_KEY not in output_flow_dict:
         return output_flow_dict
