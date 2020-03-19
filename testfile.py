@@ -19,8 +19,10 @@ MORE_EQUAL = '>='
 LESS = '<'
 FEATURE_KEY = 'feature'
 PRUNE_LEVEL = 10
+TRAINED_TREES = 'trained_trees'
 output_flow_dict = {}
 features_list = []
+
 
 def gini_gain_calc(dataframe, feature, current_split):
     columns_list = list(dataframe.columns)
@@ -163,47 +165,62 @@ def training(dataframe, current_level):
     print("Final dict is : ")
     pprint.pprint(output_flow_dict)
 
+    if not os.path.exists(TRAINED_TREES):
+        os.mkdir(TRAINED_TREES)
     # save the trained output
-    json_trained_tree = json.dumps(trained_tree)
-    with open("trained_tree_dict.json", "w") as the_file:
+    json_trained_tree = json.dumps(output_flow_dict)
+    with open(os.path.join(TRAINED_TREES, "trained_tree_dict.json"), "w") as the_file:
         the_file.write(json_trained_tree)
 
     return output_flow_dict
 
 
-def classification(classification_dict):
-    with open("trained_tree_dict.json", "r") as the_file:
-        output_flow_dict = ast.literal_eval(the_file.read())
+def classification(classification_dict, output_dict=None):
+    if not output_dict:
+        with open(os.path.join(TRAINED_TREES, "trained_tree_dict.json"), "r") as the_file:
+            output_dict = ast.literal_eval(the_file.read())
 
     # is it the output well written ?
-
+    """
+    print(classification_dict.keys())
+    print(features_list)
     if len(classification_dict.keys()) != len(features_list):
-        raise Exception('DecisionTree Classification Exception', 'Wrong variables')
+        if len(classification_dict.keys()) > len(features_list):
+            raise Exception('DecisionTree Classification Exception', 'Too many fields')
+        else:
+            raise Exception('DecisionTree Classification Exception', 'Too few fields')
     else:
+
         for key in classification_dict.keys():
             if key not in features_list:
                 raise Exception('DecisionTree Classification Exception', 'Wrong variables')
+    """
 
     # if it contains only the output
-    if FEATURE_KEY not in output_flow_dict:
-        return output_flow_dict
+    if FEATURE_KEY not in output_dict:
+        return output_dict
     # check for each feature the split and which part of the dict/tree explore
-    feature_to_test = output_flow_dict[FEATURE_KEY]
-    if classification_dict[feature_to_test] >= output_flow_dict[SPLIT_VALUE_KEY]:
-        return classification(classification_dict, output_flow_dict[MORE_EQUAL])
+    feature_to_test = output_dict[FEATURE_KEY]
+    if classification_dict[feature_to_test] >= output_dict[SPLIT_VALUE_KEY]:
+        return classification(classification_dict, output_dict[MORE_EQUAL])
     else:
-        return classification(classification_dict, output_flow_dict[LESS])
+        return classification(classification_dict, output_dict[LESS])
 
 
-data_path = 'Data'
-file_name = 'iris_data.csv'
+def main():
+    """
+    data_path = 'Data'
+    file_name = 'iris_data.csv'
+    trained_tree_path = 'trained_tree_dict.json'
 
-dataframe = pd.read_csv(os.path.join(data_path, file_name))
-training_set = dataframe  # .head(60)
-print(training_set)
+    dataframe = pd.read_csv(os.path.join(data_path, file_name))
+    training_set = dataframe  # .head(60)
+    current_level = 0
+    trained_tree = training(training_set, current_level)  # (dataframe)
+    """
+    test_classification_dict = {'petal length':2.5, 'sepal length':1.05, 'petal width':1.63, 'sepal width':1.0}
+    output_label = classification(test_classification_dict)
+    print("output label is {}".format(output_label))
 
-current_level = 0
-
-trained_tree = training(training_set, current_level)  # (dataframe)
-with open('trained_tree.txt', 'a') as the_file:
-    the_file.write(trained_tree)
+if __name__ == "__main__":
+    main()
