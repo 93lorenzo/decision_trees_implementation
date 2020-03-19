@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 import pprint
+import json
+import ast
 
 """
 Gini Impurity is a measurement of the likelihood of an incorrect classification of a new instance of a random variable, 
@@ -160,10 +162,19 @@ def training(dataframe, current_level):
     # print("output_dict = {}".format(output_flow_dict))
     print("Final dict is : ")
     pprint.pprint(output_flow_dict)
+
+    # save the trained output
+    json_trained_tree = json.dumps(trained_tree)
+    with open("trained_tree_dict.json", "w") as the_file:
+        the_file.write(json_trained_tree)
+
     return output_flow_dict
 
 
-def classification(classification_dict, output_flow_dict):
+def classification(classification_dict):
+    with open("trained_tree_dict.json", "r") as the_file:
+        output_flow_dict = ast.literal_eval(the_file.read())
+
     # is it the output well written ?
 
     if len(classification_dict.keys()) != len(features_list):
@@ -193,4 +204,6 @@ print(training_set)
 
 current_level = 0
 
-training(training_set, current_level)  # (dataframe)
+trained_tree = training(training_set, current_level)  # (dataframe)
+with open('trained_tree.txt', 'a') as the_file:
+    the_file.write(trained_tree)
