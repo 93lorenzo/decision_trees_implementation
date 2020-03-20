@@ -90,7 +90,7 @@ def gini_gain_calc(dataframe, feature, current_split):
     return gini_gain, {LESS: full_data_left, MORE_EQUAL: full_data_right}
 
 
-def training(dataframe, current_level):
+def training(dataframe, current_level, current_tree_number=1):
     columns_list = list(dataframe.columns)
     label_column = columns_list[len(columns_list) - 1]
     # obtain all the possible outcomes (labels)
@@ -169,17 +169,18 @@ def training(dataframe, current_level):
         os.mkdir(TRAINED_TREES)
     # save the trained output
     json_trained_tree = json.dumps(output_flow_dict)
-    with open(os.path.join(TRAINED_TREES, "trained_tree_dict.json"), "w") as the_file:
+    with open(os.path.join(TRAINED_TREES, "trained_tree_dict_{}.json".format(current_tree_number)), "w") as the_file:
         the_file.write(json_trained_tree)
 
     return output_flow_dict
 
 
-def classification(classification_dict, output_dict=None):
+def classification(classification_dict, output_dict=None, tree_path="trained_tree_dict_1.json"):
     if not output_dict:
-        with open(os.path.join(TRAINED_TREES, "trained_tree_dict.json"), "r") as the_file:
+        #with open(os.path.join(TRAINED_TREES, "trained_tree_dict_{}.json".format(n_tree)), "r") as the_file:
+        with open(os.path.join(TRAINED_TREES, tree_path), "r") as the_file:
             output_dict = ast.literal_eval(the_file.read())
-
+            pprint.pprint(output_dict)
     # is it the output well written ?
     """
     print(classification_dict.keys())
@@ -208,19 +209,33 @@ def classification(classification_dict, output_dict=None):
 
 
 def main():
-    """
+    n_tree = 4
+    #training_main(n_tree)
+    classification_main()
+
+def training_main(n_trees=3, training_set_percent=0.8):
     data_path = 'Data'
     file_name = 'iris_data.csv'
     trained_tree_path = 'trained_tree_dict.json'
 
-    dataframe = pd.read_csv(os.path.join(data_path, file_name))
-    training_set = dataframe  # .head(60)
-    current_level = 0
-    trained_tree = training(training_set, current_level)  # (dataframe)
-    """
-    test_classification_dict = {'petal length':2.5, 'sepal length':1.05, 'petal width':1.63, 'sepal width':1.0}
-    output_label = classification(test_classification_dict)
+    for i in range(n_trees):
+        dataframe = pd.read_csv(os.path.join(data_path, file_name))
+        training_set = dataframe.sample(frac=training_set_percent, replace=True, random_state=1)
+        current_level = 0
+        trained_tree = training(training_set, current_level, i)  # (dataframe)
+
+
+def classification_main():
+    test_classification_dict = {'petal length': 1.5, 'sepal length': 1.05, 'petal width': 1.63, 'sepal width': 1.0}
+
+    output_labels = []
+    for trained_tree in os.listdir(TRAINED_TREES):
+        output_labels.append(classification(test_classification_dict, tree_path=trained_tree)['output'])
+
+    print("output labels = {}".format(output_labels))
+    output_label = res = max(set(output_labels), key=output_labels.count)
     print("output label is {}".format(output_label))
+
 
 if __name__ == "__main__":
     main()

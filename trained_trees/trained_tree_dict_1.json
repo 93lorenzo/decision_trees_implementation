@@ -1,0 +1,1 @@
+{"split_value": 1.75, "feature": "petal width", "<": {"split_value": 5.05, "feature": "petal length", "<": {"output": "Iris-versicolor"}, ">=": {"split_value": 6.05, "feature": "sepal length", "<": {"output": "Iris-versicolor"}, ">=": {"output": "Iris-virginica"}}}, ">=": {"output": "Iris-virginica"}}
