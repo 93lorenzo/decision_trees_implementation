@@ -17,14 +17,17 @@ SPLIT_VALUE_KEY = "split_value"
 SONS_DICT_KEY = "sons_dict"
 MORE_EQUAL = '>='
 LESS = '<'
+EQUAL = '=='
+DIFFERENT = '!='
 FEATURE_KEY = 'feature'
 PRUNE_LEVEL = 10
 TRAINED_TREES = 'trained_trees'
 output_flow_dict = {}
 features_list = []
+DATA_PATH = 'Data'
 
 
-def gini_gain_calc(dataframe, feature, current_split):
+def gini_gain_calc(dataframe, feature, current_split, numeric=True):
     columns_list = list(dataframe.columns)
     label_column = columns_list[len(columns_list) - 1]
 
@@ -39,8 +42,13 @@ def gini_gain_calc(dataframe, feature, current_split):
     # print(  "inside gini gain calc ***{}*** \n columns = {}, label_col = {}, \n labels = {}, total_row = {} , current_split {}".format(
     #        feature, columns_list, label_column, labels_list, total_row, current_split))
 
-    subset_left = dataframe[dataframe[feature] < current_split]
-    subset_right = dataframe[dataframe[feature] >= current_split]
+    if numeric:
+        subset_left = dataframe[dataframe[feature] < current_split]
+        subset_right = dataframe[dataframe[feature] >= current_split]
+    else:
+        subset_left = dataframe[dataframe[feature] == current_split]
+        subset_right = dataframe[dataframe[feature] != current_split]
+
     subsets_list = [subset_left, subset_right]
 
     label_probability = 0
@@ -52,8 +60,6 @@ def gini_gain_calc(dataframe, feature, current_split):
         subset_count_row = subset[feature].count()
         # print("subset count row {} feature {} ".format(subset_count_row, feature))
         # for each label sum -> p(label)*(1-p(label))
-        # TODO
-        # check in this way it goes two times -> maybe it is just because it is the same split a/b(1-a/b) = (1-a)/b(1-(1-a)/b)
         for label in labels_list:
             # estimate the impurity
             # remove the first line in the count
@@ -126,8 +132,14 @@ def training(dataframe, current_level, current_tree_number=1):
             if old_value:
                 current_split = (old_value + unique_value) / 2
                 split_list.append(current_split)
+
+                if type() == str:
+                    is_var_numeric = False
+                else:
+                    is_var_numeric = True
+
                 # 3) estimate the gini impurity for the current value
-                current_gain, sons_dict = gini_gain_calc(dataframe, feature, current_split)
+                current_gain, sons_dict = gini_gain_calc(dataframe, feature, current_split, is_var_numeric)
 
                 # update the dict with the minimum value of impurity - max of the gain
                 if current_gain > gini_dict[feature][GINI_GAIN_KEY]:
@@ -177,26 +189,10 @@ def training(dataframe, current_level, current_tree_number=1):
 
 def classification(classification_dict, output_dict=None, tree_path="trained_tree_dict_1.json"):
     if not output_dict:
-        #with open(os.path.join(TRAINED_TREES, "trained_tree_dict_{}.json".format(n_tree)), "r") as the_file:
+        # with open(os.path.join(TRAINED_TREES, "trained_tree_dict_{}.json".format(n_tree)), "r") as the_file:
         with open(os.path.join(TRAINED_TREES, tree_path), "r") as the_file:
             output_dict = ast.literal_eval(the_file.read())
             pprint.pprint(output_dict)
-    # is it the output well written ?
-    """
-    print(classification_dict.keys())
-    print(features_list)
-    if len(classification_dict.keys()) != len(features_list):
-        if len(classification_dict.keys()) > len(features_list):
-            raise Exception('DecisionTree Classification Exception', 'Too many fields')
-        else:
-            raise Exception('DecisionTree Classification Exception', 'Too few fields')
-    else:
-
-        for key in classification_dict.keys():
-            if key not in features_list:
-                raise Exception('DecisionTree Classification Exception', 'Wrong variables')
-    """
-
     # if it contains only the output
     if FEATURE_KEY not in output_dict:
         return output_dict
@@ -210,16 +206,14 @@ def classification(classification_dict, output_dict=None, tree_path="trained_tre
 
 def main():
     n_tree = 4
-    #training_main(n_tree)
+    file_name = 'iris_data.csv'
+    #training_main(file_name=file_name, n_tree=n_tree)
     classification_main()
 
-def training_main(n_trees=3, training_set_percent=0.8):
-    data_path = 'Data'
-    file_name = 'iris_data.csv'
-    trained_tree_path = 'trained_tree_dict.json'
 
+def training_main(file_name, n_trees=3, training_set_percent=0.8):
     for i in range(n_trees):
-        dataframe = pd.read_csv(os.path.join(data_path, file_name))
+        dataframe = pd.read_csv(os.path.join(DATA_PATH, file_name))
         training_set = dataframe.sample(frac=training_set_percent, replace=True, random_state=1)
         current_level = 0
         trained_tree = training(training_set, current_level, i)  # (dataframe)
