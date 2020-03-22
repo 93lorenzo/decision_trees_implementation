@@ -27,7 +27,7 @@ features_list = []
 DATA_PATH = 'Data'
 
 
-def gini_gain_calc(dataframe, feature, current_split, numeric=True):
+def gini_gain_calc(dataframe, feature, current_split, is_numeric=True):
     columns_list = list(dataframe.columns)
     label_column = columns_list[len(columns_list) - 1]
 
@@ -42,10 +42,10 @@ def gini_gain_calc(dataframe, feature, current_split, numeric=True):
     # print(  "inside gini gain calc ***{}*** \n columns = {}, label_col = {}, \n labels = {}, total_row = {} , current_split {}".format(
     #        feature, columns_list, label_column, labels_list, total_row, current_split))
 
-    if numeric:
+    if is_numeric:
         subset_left = dataframe[dataframe[feature] < current_split]
         subset_right = dataframe[dataframe[feature] >= current_split]
-    else:
+    elif not is_numeric:
         subset_left = dataframe[dataframe[feature] == current_split]
         subset_right = dataframe[dataframe[feature] != current_split]
 
@@ -91,9 +91,16 @@ def gini_gain_calc(dataframe, feature, current_split, numeric=True):
     # the gain = max impurity - impurity we got
     gini_gain = maximum_impurity - gini_weighted_gain_total
     # print("gini gain is {}".format(gini_gain))
-    full_data_left = full_data_frame_deep_copy[full_data_frame_deep_copy[feature] < current_split]
-    full_data_right = full_data_frame_deep_copy[full_data_frame_deep_copy[feature] >= current_split]
-    return gini_gain, {LESS: full_data_left, MORE_EQUAL: full_data_right}
+    if is_numeric:
+        full_data_left = full_data_frame_deep_copy[full_data_frame_deep_copy[feature] < current_split]
+        full_data_right = full_data_frame_deep_copy[full_data_frame_deep_copy[feature] >= current_split]
+        sons_dict = {LESS: full_data_left, MORE_EQUAL: full_data_right}
+    elif not is_numeric:
+        full_data_left = full_data_frame_deep_copy[full_data_frame_deep_copy[feature] == current_split]
+        full_data_right = full_data_frame_deep_copy[full_data_frame_deep_copy[feature] != current_split]
+        sons_dict = {EQUAL: full_data_left, DIFFERENT: full_data_right}
+
+    return gini_gain, sons_dict
 
 
 def training(dataframe, current_level, current_tree_number=1):
@@ -103,7 +110,7 @@ def training(dataframe, current_level, current_tree_number=1):
     labels_list = list(dataframe[label_column])
     ##################
     # STOP CONDITION #
-    print("### len set label list = {} and label list = {}".format(len(set(labels_list)), labels_list))
+    # print("### len set label list = {} and label list = {}".format(len(set(labels_list)), labels_list))
     if current_level > PRUNE_LEVEL or len(set(labels_list)) == 1:
         res = max(set(labels_list), key=labels_list.count)  # two values count are the same -> the last one in the list
         return {'output': res}
@@ -125,19 +132,31 @@ def training(dataframe, current_level, current_tree_number=1):
         split_list = []
         old_value = None
 
+        if type(unique_set_feature[0]) == str:
+            is_var_numeric = False
+        else:
+            is_var_numeric = True
+
         # 2) create the needed split - size = ( n - 1 ) unique values of the feature
         # if we have 0 5 10, we have to check each possible split -> 2.5 7.5
         for unique_value in unique_set_feature:
-            # skip the first iteration
-            if old_value:
-                current_split = (old_value + unique_value) / 2
+            if is_var_numeric:
+                # skip the first iteration
+                if old_value:
+                    current_split = (old_value + unique_value) / 2
+                    split_list.append(current_split)
+                    # 3) estimate the gini impurity for the current value
+                    current_gain, sons_dict = gini_gain_calc(dataframe, feature, current_split, is_var_numeric)
+
+                    # update the dict with the minimum value of impurity - max of the gain
+                    if current_gain > gini_dict[feature][GINI_GAIN_KEY]:
+                        gini_dict.update({feature: {GINI_GAIN_KEY: current_gain, SPLIT_VALUE_KEY: current_split,
+                                                    SONS_DICT_KEY: sons_dict}})
+                # update with the used value
+                old_value = unique_value
+            elif not is_var_numeric:
+                current_split = unique_value
                 split_list.append(current_split)
-
-                if type() == str:
-                    is_var_numeric = False
-                else:
-                    is_var_numeric = True
-
                 # 3) estimate the gini impurity for the current value
                 current_gain, sons_dict = gini_gain_calc(dataframe, feature, current_split, is_var_numeric)
 
@@ -145,10 +164,11 @@ def training(dataframe, current_level, current_tree_number=1):
                 if current_gain > gini_dict[feature][GINI_GAIN_KEY]:
                     gini_dict.update({feature: {GINI_GAIN_KEY: current_gain, SPLIT_VALUE_KEY: current_split,
                                                 SONS_DICT_KEY: sons_dict}})
-            # update with the used value
+                # update with the used value
             old_value = unique_value
+
         # 4) estimate the best impurity per split
-        print("gini dict is {}".format(gini_dict))
+        # print("gini dict is {}".format(gini_dict))
 
         # TODO
         # take the maximum split and use it as the first split and iterate again for the next step
@@ -157,6 +177,7 @@ def training(dataframe, current_level, current_tree_number=1):
     max_split = ''
     feature = ''
     max_sons_dict = {}
+    max_is_numeric = True
     for key, value in gini_dict.items():
         loop_dict = value
         # print(value)
@@ -165,13 +186,18 @@ def training(dataframe, current_level, current_tree_number=1):
             max_split = loop_dict[SPLIT_VALUE_KEY]
             max_sons_dict = loop_dict[SONS_DICT_KEY]
             feature = key
+            max_is_numeric = type(max_split) != str
 
-    if type(feature) != 'string':
+    if max_is_numeric:
         # print(max_gain, max_split, feature)
         output_flow_dict = {SPLIT_VALUE_KEY: max_split, FEATURE_KEY: feature,
                             LESS: training(max_sons_dict[LESS], current_level - 1),
                             MORE_EQUAL: training(max_sons_dict[MORE_EQUAL], current_level - 1)}
         # dict = {'split_value': max_split, 'feature': feature}
+    else:
+        output_flow_dict = {SPLIT_VALUE_KEY: max_split, FEATURE_KEY: feature,
+                            EQUAL: training(max_sons_dict[EQUAL], current_level - 1),
+                            DIFFERENT: training(max_sons_dict[DIFFERENT], current_level - 1)}
 
     # print("output_dict = {}".format(output_flow_dict))
     print("Final dict is : ")
@@ -198,20 +224,32 @@ def classification(classification_dict, output_dict=None, tree_path="trained_tre
         return output_dict
     # check for each feature the split and which part of the dict/tree explore
     feature_to_test = output_dict[FEATURE_KEY]
-    if classification_dict[feature_to_test] >= output_dict[SPLIT_VALUE_KEY]:
-        return classification(classification_dict, output_dict[MORE_EQUAL])
+    if type (classification_dict[feature_to_test]) != str:
+        if classification_dict[feature_to_test] >= output_dict[SPLIT_VALUE_KEY]:
+            return classification(classification_dict, output_dict[MORE_EQUAL])
+        else:
+            return classification(classification_dict, output_dict[LESS])
     else:
-        return classification(classification_dict, output_dict[LESS])
+        if classification_dict[feature_to_test] == output_dict[SPLIT_VALUE_KEY]:
+            return classification(classification_dict, output_dict[EQUAL])
+        else:
+            return classification(classification_dict, output_dict[DIFFERENT])
 
 
 def main():
-    n_tree = 4
-    file_name = 'iris_data.csv'
-    #training_main(file_name=file_name, n_tree=n_tree)
+    n_trees = 4
+    # file_name = 'iris_data.csv'
+    file_name = 'adult_data.csv'
+
+    # training_main(file_name=file_name, n_trees=n_trees)
     classification_main()
 
 
-def training_main(file_name, n_trees=3, training_set_percent=0.8):
+def training_main(file_name, n_trees=3, training_set_percent=0.2):
+    # clean old training
+    for trained_tree in os.listdir(TRAINED_TREES):
+        os.remove(os.path.join(TRAINED_TREES, trained_tree))
+
     for i in range(n_trees):
         dataframe = pd.read_csv(os.path.join(DATA_PATH, file_name))
         training_set = dataframe.sample(frac=training_set_percent, replace=True, random_state=1)
@@ -220,7 +258,11 @@ def training_main(file_name, n_trees=3, training_set_percent=0.8):
 
 
 def classification_main():
-    test_classification_dict = {'petal length': 1.5, 'sepal length': 1.05, 'petal width': 1.63, 'sepal width': 1.0}
+    # test_classification_dict = {'petal length': 1.5, 'sepal length': 1.05, 'petal width': 1.63, 'sepal width': 1.0}
+    test_classification_dict = {"age": 38, "workclass": 'Private', "fnlwgt": 215646, "education": 'HS-grad',
+                                "education-num": 9, "marital-status": 'Divorced', "occupation": 'Handlers-cleaners',
+                                "relationship": 'Not-in-family', "race": 'White', "sex": 'Male', "capital-gain": 0,
+                                "capital-loss": 0, "hours-per-week": 40, "native-country": 'United-States'}
 
     output_labels = []
     for trained_tree in os.listdir(TRAINED_TREES):
