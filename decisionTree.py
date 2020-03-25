@@ -107,7 +107,7 @@ class decisionTree:
 
         return gini_gain, sons_dict
 
-    def training_second_step(self, dataframe, current_level, current_tree_number=1):
+    def __training_second_step(self, dataframe, current_level, current_tree_number=1):
         columns_list = list(dataframe.columns)
         label_column = columns_list[len(columns_list) - 1]
         # obtain all the possible outcomes (labels)
@@ -195,14 +195,14 @@ class decisionTree:
         if max_is_numeric:
             # print(max_gain, max_split, feature)
             output_flow_dict = {self.SPLIT_VALUE_KEY: max_split, self.FEATURE_KEY: feature,
-                                self.LESS: self.training_second_step(max_sons_dict[self.LESS], current_level - 1),
-                                self.MORE_EQUAL: self.training_second_step(max_sons_dict[self.MORE_EQUAL],
+                                self.LESS: self.__training_second_step(max_sons_dict[self.LESS], current_level - 1),
+                                self.MORE_EQUAL: self.__training_second_step(max_sons_dict[self.MORE_EQUAL],
                                                                            current_level - 1)}
             # dict = {'split_value': max_split, 'feature': feature}
         else:
             output_flow_dict = {self.SPLIT_VALUE_KEY: max_split, self.FEATURE_KEY: feature,
-                                self.EQUAL: self.training_second_step(max_sons_dict[self.EQUAL], current_level - 1),
-                                self.DIFFERENT: self.training_second_step(max_sons_dict[self.DIFFERENT],
+                                self.EQUAL: self.__training_second_step(max_sons_dict[self.EQUAL], current_level - 1),
+                                self.DIFFERENT: self.__training_second_step(max_sons_dict[self.DIFFERENT],
                                                                           current_level - 1)}
 
         # print("output_dict = {}".format(output_flow_dict))
@@ -219,7 +219,7 @@ class decisionTree:
 
         return output_flow_dict
 
-    def classification_second_step(self, classification_dict, output_dict=None, tree_path="trained_tree_dict_1.json"):
+    def __classification_second_step(self, classification_dict, output_dict=None, tree_path="trained_tree_dict_1.json"):
         if not output_dict:
             # with open(os.path.join(TRAINED_TREES, "trained_tree_dict_{}.json".format(n_tree)), "r") as the_file:
             with open(os.path.join(self.TRAINED_TREES, tree_path), "r") as the_file:
@@ -232,14 +232,14 @@ class decisionTree:
         feature_to_test = output_dict[self.FEATURE_KEY]
         if type(classification_dict[feature_to_test]) != str:
             if classification_dict[feature_to_test] >= output_dict[self.SPLIT_VALUE_KEY]:
-                return self.classification_second_step(classification_dict, output_dict[self.MORE_EQUAL])
+                return self.__classification_second_step(classification_dict, output_dict[self.MORE_EQUAL])
             else:
-                return self.classification_second_step(classification_dict, output_dict[self.LESS])
+                return self.__classification_second_step(classification_dict, output_dict[self.LESS])
         else:
             if classification_dict[feature_to_test] == output_dict[self.SPLIT_VALUE_KEY]:
-                return self.classification_second_step(classification_dict, output_dict[self.EQUAL])
+                return self.__classification_second_step(classification_dict, output_dict[self.EQUAL])
             else:
-                return self.classification_second_step(classification_dict, output_dict[self.DIFFERENT])
+                return self.__classification_second_step(classification_dict, output_dict[self.DIFFERENT])
 
     def training(self, n_trees=3, training_set_percent=0.2):
         file_name = self.data_path
@@ -251,7 +251,7 @@ class decisionTree:
             dataframe = pd.read_csv(os.path.join(self.DATA_PATH, file_name))
             training_set = dataframe.sample(frac=training_set_percent, replace=True, random_state=1)
             current_level = 0
-            trained_tree = self.training_second_step(training_set, current_level, i)  # (dataframe)
+            trained_tree = self.__training_second_step(training_set, current_level, i)  # (dataframe)
 
     def classification(self, test_classification_dict):
         # test_classification_dict = {'petal length': 1.5, 'sepal length': 1.05, 'petal width': 1.63, 'sepal width': 1.0}
@@ -263,7 +263,7 @@ class decisionTree:
 
         output_labels = []
         for trained_tree in os.listdir(self.TRAINED_TREES):
-            output_labels.append(self.classification_second_step(test_classification_dict, tree_path=trained_tree)['output'])
+            output_labels.append(self.__classification_second_step(test_classification_dict, tree_path=trained_tree)['output'])
 
         print("output labels = {}".format(output_labels))
         output_label = res = max(set(output_labels), key=output_labels.count)
