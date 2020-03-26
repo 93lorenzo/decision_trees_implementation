@@ -1,5 +1,6 @@
 from decisionTree import decisionTree
 
+
 def main():
     n_trees = 4
     training_percentage = 0.2
