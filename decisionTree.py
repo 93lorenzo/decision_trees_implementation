@@ -14,6 +14,33 @@ https://datascience.stackexchange.com/questions/24339/how-is-a-splitting-point-c
 
 
 class decisionTree:
+    """
+        A class used to represent a Decision Tree
+
+        ...
+
+        Attributes
+        ----------
+        data_path : str
+            path to the csv file that contains the data
+        pruning_level : str
+            the number of maximum depth for the training of the tree (default 4)
+
+        Methods
+        -------
+        gini_gain_calc(self, dataframe, feature, current_split, is_numeric=True)
+            xxx
+        def __training_second_step(self, dataframe, current_level, current_tree_number=1):
+            xxx
+        def training(self, n_trees=3, training_set_percent=0.2):
+            xxx
+        def __classification_second_step(self, classification_dict, output_dict=None, tree_path="trained_tree_dict_1.json"):
+            xxx
+        def classification(self, test_classification_dict):
+            xxx
+    """
+
+
     GINI_GAIN_KEY = "gini_gain"
     SPLIT_VALUE_KEY = "split_value"
     SONS_DICT_KEY = "sons_dict"
@@ -29,10 +56,30 @@ class decisionTree:
     DATA_PATH = 'Data'
 
     def __init__(self, data_path, pruning_level=10):
+        """
+        Parameters
+        ----------
+        :param data_path:
+            path to the csv file that contains the data
+        :param pruning_level:
+            the number of maximum depth for the training of the tree (default 4)
+        """
         self.data_path = data_path
         self.pruning_level = pruning_level
 
     def gini_gain_calc(self, dataframe, feature, current_split, is_numeric=True):
+        """
+        :param dataframe:
+            current data taken into account for the split
+        :param feature:
+            the feature for which the split will be calculated
+        :param current_split:
+            the split value for the feature to test the data
+        :param is_numeric:
+            boolean that describes if the feature is numeric or categorical
+        :return:
+            gini gain that express the quality of the split and the dict that describes the split
+        """
         columns_list = list(dataframe.columns)
         label_column = columns_list[len(columns_list) - 1]
 
@@ -108,6 +155,16 @@ class decisionTree:
         return gini_gain, sons_dict
 
     def __training_second_step(self, dataframe, current_level, current_tree_number=1):
+        """
+        :param dataframe:
+            current data taken into account for the split
+        :param current_level:
+            current level of depth in the recursive training process
+        :param current_tree_number:
+            the number of the current tree for the random forest creation
+        :return:
+            the dict that contains the classification flow
+        """
         columns_list = list(dataframe.columns)
         label_column = columns_list[len(columns_list) - 1]
         # obtain all the possible outcomes (labels)
@@ -116,14 +173,11 @@ class decisionTree:
         # STOP CONDITION #
         # print("### len set label list = {} and label list = {}".format(len(set(labels_list)), labels_list))
         if current_level > self.PRUNE_LEVEL or len(set(labels_list)) == 1:
-            res = max(set(labels_list),
-                      key=labels_list.count)  # two values count are the same -> the last one in the list
+            res = max(set(labels_list),key=labels_list.count)# two values count are the same->the last one in the list
             return {'output': res}
 
         features_list = columns_list[:len(columns_list) - 1]
         gini_dict = {}
-        # TODO
-        # think about add condition like =/!= for strings and >/< for numbers
 
         for feature in features_list:
             # create a dict for each feature with impurity and the value that bring the this impurity
@@ -220,6 +274,17 @@ class decisionTree:
         return output_flow_dict
 
     def __classification_second_step(self, classification_dict, output_dict=None, tree_path="trained_tree_dict_1.json"):
+        """
+
+        :param classification_dict:
+            dict that contains the label and their values
+        :param output_dict:
+            the result of the classification
+        :param tree_path:
+            the path of the classification dict that will be saved after the training
+        :return:
+            the output label
+        """
         if not output_dict:
             # with open(os.path.join(TRAINED_TREES, "trained_tree_dict_{}.json".format(n_tree)), "r") as the_file:
             with open(os.path.join(self.TRAINED_TREES, tree_path), "r") as the_file:
@@ -242,6 +307,14 @@ class decisionTree:
                 return self.__classification_second_step(classification_dict, output_dict[self.DIFFERENT])
 
     def training(self, n_trees=3, training_set_percent=0.2):
+        """
+        :param n_trees:
+            how many trees for the random forest creation
+        :param training_set_percent:
+            how much percentage of the dataset use for the training process
+        :return:
+            it call the second training method, that after the trainig will save the classification flow on a file
+        """
         file_name = self.data_path
         # clean old training
         for trained_tree in os.listdir(self.TRAINED_TREES):
@@ -254,6 +327,13 @@ class decisionTree:
             trained_tree = self.__training_second_step(training_set, current_level, i)  # (dataframe)
 
     def classification(self, test_classification_dict):
+        """
+
+        :param test_classification_dict:
+            dict that contains the labels and their values ( but not the label)
+        :return:
+            returns the classification label
+        """
         # test_classification_dict = {'petal length': 1.5, 'sepal length': 1.05, 'petal width': 1.63, 'sepal width': 1.0}
 
         # test_classification_dict = {"age": 38, "workclass": 'Private', "fnlwgt": 215646, "education": 'HS-grad',
